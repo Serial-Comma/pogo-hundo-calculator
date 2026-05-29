@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  .hidden { display: none !important; }
 
   :root {
     --blue:   #0075BE;
@@ -165,7 +166,6 @@
   }
 
   #goal-section { transition: opacity 0.2s; }
-  #goal-section.hidden { display: none; }
 
   /* ── Probability slider ──────────────────────────────────────────────────── */
   .slider-row {
@@ -555,6 +555,337 @@
     margin-top: 4px;
   }
 
+  /* ── Simulator ──────────────────────────────────────────────────────────── */
+  .sim-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .sim-controls label {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  /* ── Minecraft Achievement Toast ──────────────────────────────────────────── */
+  #mc-achievement {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: #3c3c3c;
+    border: 2px solid #1a1a1a;
+    outline: 2px solid #5a5a5a;
+    outline-offset: -4px;
+    padding: 0;
+    width: 320px;
+    image-rendering: pixelated;
+    transform: translateX(360px);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    cursor: default;
+    user-select: none;
+  }
+
+  .mc-icon-wrap {
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    background: #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    border-right: 2px solid #1a1a1a;
+  }
+
+  .mc-text {
+    flex: 1;
+    padding: 6px 10px 8px;
+    font-family: "Courier New", monospace;
+    line-height: 1.25;
+  }
+
+  .mc-header {
+    font-size: 0.65rem;
+    color: #ffff55;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+
+  .mc-title {
+    font-size: 0.85rem;
+    color: #ffffff;
+    font-weight: bold;
+  }
+
+  .mc-close {
+    flex-shrink: 0;
+    width: 24px;
+    height: 56px;
+    background: transparent;
+    border: none;
+    color: #aaa;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+  }
+
+  .mc-close:hover { color: #fff; }
+
+  @keyframes mc-ping {
+    0%   { box-shadow: 0 0 0 0 rgba(255,255,85,0.7); }
+    70%  { box-shadow: 0 0 0 12px rgba(255,255,85,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,255,85,0); }
+  }
+
+  #mc-achievement.mc-visible {
+    transform: translateX(0);
+    animation: mc-ping 0.6s ease-out 0.35s 1;
+  }
+
+  .sim-count-input {
+    width: 100px;
+    background: var(--navy);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 6px 10px;
+    text-align: center;
+  }
+
+  .sim-count-input:focus { outline: 1px solid var(--gold); }
+
+  .sim-run-btn {
+    background: var(--gold);
+    color: var(--navy);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .sim-run-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+  .sim-run-btn:active { transform: translateY(0); }
+  .sim-run-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+  .sim-stop-btn {
+    background: transparent;
+    color: var(--red);
+    border: 1.5px solid var(--red);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .sim-stop-btn:hover { background: var(--red); color: #fff; }
+
+  .sim-progress {
+    font-size: 0.78rem;
+    color: var(--muted);
+    align-self: center;
+  }
+
+  .sim-results { margin-top: 20px; }
+
+  .sim-summary {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+
+  .sim-summary strong { color: var(--text); }
+  .sim-highlight { color: var(--gold); font-weight: 700; }
+
+  .sim-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 520px) {
+    .sim-charts-grid { grid-template-columns: 1fr; }
+  }
+
+  .sim-chart-box {
+    background: var(--navy);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+
+  .sim-chart-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .sim-chart-canvas-wrap {
+    position: relative;
+    height: 150px;
+  }
+
+  .sim-chart-legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    align-items: center;
+  }
+
+  .sim-legend-item { display: flex; align-items: center; gap: 5px; }
+  .sim-legend-item svg { flex-shrink: 0; }
+
+  .sim-stats-wrap { overflow-x: auto; }
+
+  .sim-stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    font-family: "Courier New", monospace;
+    min-width: 380px;
+  }
+
+  .sim-stats-table th {
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 5px 10px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sim-stats-table th:first-child { text-align: left; }
+
+  .sim-stats-table td {
+    padding: 5px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    text-align: right;
+    color: var(--text);
+  }
+
+  .sim-stats-table td:first-child { text-align: left; color: var(--muted); }
+  .sim-stats-table tr:last-child td { border-bottom: none; }
+  .sim-stats-table tr.sim-perf td { color: var(--gold); }
+
+  /* ── Trade simulator ────────────────────────────────────────────────────── */
+  .trade-sim-toggle-btn {
+    background: transparent;
+    color: var(--gold);
+    border: 1.5px solid var(--gold);
+    border-radius: 8px;
+    padding: 7px 16px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .trade-sim-toggle-btn:hover { background: var(--gold); color: var(--navy); }
+
+  .trade-sim-panel {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .trade-sim-heading {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+
+  .trade-sim-desc {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+
+  .trade-params {
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+
+  .trade-param {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .trade-param label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .trade-select {
+    background: var(--navy);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.88rem;
+    padding: 6px 10px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .trade-select:focus { border-color: var(--gold); }
+
+  .trade-group-heading {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    padding: 14px 0 10px;
+    margin-top: 6px;
+    border-top: 1px solid var(--border);
+  }
+
+  .trade-lucky-heading { color: var(--gold); }
+  .trade-nonlucky-heading { color: var(--muted); }
+
+  .trade-no-data {
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-align: center;
+    padding: 20px;
+    background: var(--navy);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 12px;
+  }
+
   /* ── Utility ─────────────────────────────────────────────────────────────── */
   .divider {
     border: none;
@@ -564,6 +895,16 @@
 </style>
 </head>
 <body>
+
+<!-- Minecraft Achievement Toast -->
+<div id="mc-achievement" role="status" aria-live="polite">
+  <div class="mc-icon-wrap"><img src="https://i.redd.it/evq079gigu3e1.png" alt="⁉️" onerror="this.replaceWith(document.createTextNode('⁉️'))" style="width:40px;height:40px;image-rendering:pixelated;object-fit:cover;"></div>
+  <div class="mc-text">
+    <div class="mc-header">Achievement Get!</div>
+    <div class="mc-title">How did we get here?</div>
+  </div>
+  <button id="mc-close" class="mc-close" aria-label="Close achievement">&#x2715;</button>
+</div>
 
 <header>
   <!-- Pokeball SVG -->
@@ -662,6 +1003,117 @@
         <svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="rgba(231,76,60,0.75)" stroke-width="1.5" stroke-dasharray="5,3"/></svg>
         Catches needed
       </span>
+    </div>
+  </section>
+
+  <!-- Simulator -->
+  <section id="sim-section">
+    <h2>IV Simulator</h2>
+    <div class="sim-controls">
+      <label for="sim-count">Catches to simulate:</label>
+      <input type="number" id="sim-count" class="sim-count-input" min="1" max="9007199254740991" value="200">
+      <button id="sim-run" class="sim-run-btn">&#9654; Run</button>
+      <button id="sim-stop" class="sim-stop-btn hidden">&#9646;&#9646; Stop</button>
+      <span id="sim-progress" class="sim-progress hidden"></span>
+      <button id="trade-sim-toggle" class="trade-sim-toggle-btn hidden">&#9654; Trade Sim</button>
+    </div>
+    <div id="sim-results" class="sim-results hidden">
+      <p id="sim-summary" class="sim-summary"></p>
+      <div class="sim-charts-grid">
+        <div class="sim-chart-box">
+          <div class="sim-chart-title">Overall IV %</div>
+          <div class="sim-chart-canvas-wrap"><canvas id="sim-chart-ov"></canvas></div>
+        </div>
+        <div class="sim-chart-box">
+          <div class="sim-chart-title">Attack IV</div>
+          <div class="sim-chart-canvas-wrap"><canvas id="sim-chart-atk"></canvas></div>
+        </div>
+        <div class="sim-chart-box">
+          <div class="sim-chart-title">Defence IV</div>
+          <div class="sim-chart-canvas-wrap"><canvas id="sim-chart-def"></canvas></div>
+        </div>
+        <div class="sim-chart-box">
+          <div class="sim-chart-title">Stamina IV</div>
+          <div class="sim-chart-canvas-wrap"><canvas id="sim-chart-sta"></canvas></div>
+        </div>
+      </div>
+      <div class="sim-chart-legend">
+        <span class="sim-legend-item">
+          <svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="#cccccc" stroke-width="1.5" stroke-dasharray="5,3"/></svg>
+          Mean
+        </span>
+        <span class="sim-legend-item">
+          <svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="#777777" stroke-width="1.5" stroke-dasharray="2,4"/></svg>
+          Median
+        </span>
+        <span class="sim-legend-item">
+          <svg width="14" height="10"><rect x="2" y="1" width="10" height="8" fill="#FFCB05" rx="1"/></svg>
+          Perfect IV (15 / 100%)
+        </span>
+      </div>
+      <div class="sim-stats-wrap">
+        <table class="sim-stats-table" id="sim-stats-table"></table>
+      </div>
+    </div>
+    <!-- Trade simulator panel (Lucky Trade only) -->
+    <div id="trade-sim-panel" class="trade-sim-panel hidden">
+      <h3 class="trade-sim-heading">Trade Simulator</h3>
+      <p class="trade-sim-desc">Simulates random trades and separates lucky from non-lucky outcomes. Non-lucky IVs are re-rolled from the friendship IV floor; lucky Pokemon always get IV floor 12.</p>
+      <div class="trade-params">
+        <div class="trade-param">
+          <label for="trade-year">Pokemon year</label>
+          <select id="trade-year" class="trade-select"></select>
+        </div>
+        <div class="trade-param">
+          <label for="trade-friendship">Friendship</label>
+          <select id="trade-friendship" class="trade-select">
+            <option value="1">Good Friend (floor 1)</option>
+            <option value="2">Great Friend (floor 2)</option>
+            <option value="3">Ultra Friend (floor 3)</option>
+            <option value="5" selected>Best Friend (floor 5)</option>
+          </select>
+        </div>
+        <div class="trade-param">
+          <label for="trade-count">Trades</label>
+          <input type="number" id="trade-count" class="sim-count-input" min="1" max="9007199254740991" value="200">
+        </div>
+        <button id="trade-run" class="sim-run-btn">&#9654; Run</button>
+        <button id="trade-stop" class="sim-stop-btn hidden">&#9646;&#9646; Stop</button>
+        <span id="trade-progress" class="sim-progress hidden"></span>
+      </div>
+
+      <div id="trade-results" class="hidden">
+        <p id="trade-summary" class="sim-summary"></p>
+
+        <div class="trade-group-heading trade-lucky-heading">Lucky Pokemon (IV floor 12)</div>
+        <div id="trade-lucky-no-data" class="trade-no-data hidden">No lucky Pokemon in this simulation - try more trades or a higher lucky rate.</div>
+        <div class="sim-charts-grid" id="trade-lucky-charts">
+          <div class="sim-chart-box"><div class="sim-chart-title">Overall IV %</div><div class="sim-chart-canvas-wrap"><canvas id="trade-chart-lucky-ov"></canvas></div></div>
+          <div class="sim-chart-box"><div class="sim-chart-title">Attack IV</div><div class="sim-chart-canvas-wrap"><canvas id="trade-chart-lucky-atk"></canvas></div></div>
+          <div class="sim-chart-box"><div class="sim-chart-title">Defence IV</div><div class="sim-chart-canvas-wrap"><canvas id="trade-chart-lucky-def"></canvas></div></div>
+          <div class="sim-chart-box"><div class="sim-chart-title">Stamina IV</div><div class="sim-chart-canvas-wrap"><canvas id="trade-chart-lucky-sta"></canvas></div></div>
+        </div>
+        <div class="sim-stats-wrap" id="trade-lucky-stats-wrap"><table class="sim-stats-table" id="trade-lucky-stats-table"></table></div>
+
+        <div class="trade-group-heading trade-nonlucky-heading">Non-Lucky Pokemon</div>
+        <div id="trade-nl-no-data" class="trade-no-data hidden">All trades were lucky - no non-lucky data to show.</div>
+        <div class="sim-charts-grid" id="trade-nonlucky-charts">
+          <div class="sim-chart-box"><div class="sim-chart-title">Overall IV %</div><div class="sim-chart-canvas-wrap"><canvas id="trade-chart-nl-ov"></canvas></div></div>
+          <div class="sim-chart-box"><div class="sim-chart-title">Attack IV</div><div class="sim-chart-canvas-wrap"><canvas id="trade-chart-nl-atk"></canvas></div></div>
+          <div class="sim-chart-box"><div class="sim-chart-title">Defence IV</div><div class="sim-chart-canvas-wrap"><canvas id="trade-chart-nl-def"></canvas></div></div>
+          <div class="sim-chart-box"><div class="sim-chart-title">Stamina IV</div><div class="sim-chart-canvas-wrap"><canvas id="trade-chart-nl-sta"></canvas></div></div>
+        </div>
+        <div class="sim-stats-wrap" id="trade-nl-stats-wrap"><table class="sim-stats-table" id="trade-nl-stats-table"></table></div>
+
+        <div class="trade-group-heading" style="color:var(--text);">All Trades Combined</div>
+        <div class="sim-charts-grid" id="trade-total-charts">
+          <div class="sim-chart-box"><div class="sim-chart-title">Overall IV %</div><div class="sim-chart-canvas-wrap"><canvas id="trade-chart-total-ov"></canvas></div></div>
+          <div class="sim-chart-box"><div class="sim-chart-title">Attack IV</div><div class="sim-chart-canvas-wrap"><canvas id="trade-chart-total-atk"></canvas></div></div>
+          <div class="sim-chart-box"><div class="sim-chart-title">Defence IV</div><div class="sim-chart-canvas-wrap"><canvas id="trade-chart-total-def"></canvas></div></div>
+          <div class="sim-chart-box"><div class="sim-chart-title">Stamina IV</div><div class="sim-chart-canvas-wrap"><canvas id="trade-chart-total-sta"></canvas></div></div>
+        </div>
+        <div class="sim-stats-wrap" id="trade-total-stats-wrap"><table class="sim-stats-table" id="trade-total-stats-table"></table></div>
+      </div>
     </div>
   </section>
 
@@ -901,6 +1353,7 @@ function buildEncGrid() {
       state.encId = enc.id;
       // reset goal if current goal not available
       if (!enc.goals.includes(state.goalId)) state.goalId = enc.goals[0];
+      clearSimResults();
       buildEncGrid();
       buildGoalRow();
       update();
@@ -929,6 +1382,7 @@ function buildGoalRow() {
     btn.innerHTML = `${g.label}<span class="goal-sub">${g.sub}</span>`;
     btn.addEventListener("click", () => {
       state.goalId = gid;
+      clearSimResults();
       buildGoalRow();
       update();
     });
@@ -1173,6 +1627,54 @@ function roundRect(ctx, x, y, w, h, r) {
 
 Chart.register(vertLinePlugin);
 
+// ── Simulator chart plugin ────────────────────────────────────────────────────
+const simVertLinePlugin = {
+  id: "simVertLine",
+  afterDraw(chart) {
+    const opts = chart.options?.plugins?.simVertLine;
+    if (!opts) return;
+    const xScale = chart.scales.x;
+    const yScale = chart.scales.y;
+    const labels = chart.data.labels;
+    const c = chart.ctx;
+
+    function getPixelForNum(value) {
+      if (!labels || labels.length < 2) return null;
+      for (let i = 0; i < labels.length; i++) {
+        const lv = parseFloat(labels[i]);
+        if (lv >= value) {
+          if (i === 0) return xScale.getPixelForValue(0);
+          const prev = parseFloat(labels[i - 1]);
+          const t = lv === prev ? 0 : (value - prev) / (lv - prev);
+          return xScale.getPixelForValue(i - 1) + t * (xScale.getPixelForValue(i) - xScale.getPixelForValue(i - 1));
+        }
+      }
+      return xScale.getPixelForValue(labels.length - 1);
+    }
+
+    const y0 = yScale.getPixelForValue(0);
+    const y1 = yScale.top;
+
+    function drawLine(value, color, dash) {
+      const px = getPixelForNum(value);
+      if (px == null) return;
+      c.save();
+      c.beginPath();
+      c.moveTo(px, y0);
+      c.lineTo(px, y1);
+      c.strokeStyle = color;
+      c.lineWidth = 1.5;
+      c.setLineDash(dash);
+      c.stroke();
+      c.restore();
+    }
+
+    if (opts.mean   != null) drawLine(opts.mean,   "#cccccc", [5, 3]);
+    if (opts.median != null) drawLine(opts.median, "#777777", [2, 4]);
+  }
+};
+Chart.register(simVertLinePlugin);
+
 // Custom tooltip positioner - snaps to the data point on the curve
 Chart.Tooltip.positioners.curvePoint = function(items) {
   const item = items.find(i => i.datasetIndex === 0);
@@ -1267,6 +1769,7 @@ function update() {
   updateAlready();
   updateFunFacts(p, n);
   updateChart(p, n95);
+  updateTradeSimVisibility();
 }
 
 // ── Fun facts helpers ──────────────────────────────────────────────────────────
@@ -1404,11 +1907,535 @@ function updateAlready() {
   chart.update("none");
 }
 
+// ── Simulator ─────────────────────────────────────────────────────────────────
+let simCharts = [];
+
+function clearSimResults() {
+  document.getElementById("sim-results").classList.add("hidden");
+  simCharts.forEach(ch => ch.destroy());
+  simCharts = [];
+  clearTradeResults();
+}
+
+// Stats from a frequency array where value = index + offset (individual IV stats)
+function simCalcStatsFromFreq(freqArr, offset, n) {
+  if (n === 0) return null;
+  let sum = 0, minVal = null, maxVal = null, modeIdx = 0;
+  for (let i = 0; i < freqArr.length; i++) {
+    const c = freqArr[i]; if (!c) continue;
+    const v = i + offset;
+    sum += v * c;
+    if (minVal === null) minVal = v;
+    maxVal = v;
+    if (c > freqArr[modeIdx]) modeIdx = i;
+  }
+  const mean = sum / n;
+  let variance = 0;
+  for (let i = 0; i < freqArr.length; i++) {
+    const c = freqArr[i]; if (!c) continue;
+    variance += c * (i + offset - mean) ** 2;
+  }
+  const std = Math.sqrt(variance / n);
+  let q25 = null, median = null, q75 = null, cum = 0;
+  for (let i = 0; i < freqArr.length; i++) {
+    const c = freqArr[i]; if (!c) continue;
+    const v = i + offset; cum += c;
+    if (q25 === null && cum >= n * 0.25) q25 = v;
+    if (median === null && cum >= n * 0.5)  median = v;
+    if (q75 === null && cum >= n * 0.75) q75 = v;
+  }
+  return {
+    n, mean, std,
+    median: median ?? minVal,
+    min: minVal ?? offset,
+    max: maxVal ?? (offset + freqArr.length - 1),
+    q25: q25 ?? minVal, q75: q75 ?? maxVal,
+    mode: modeIdx + offset,
+    freqArr, offset,
+    perf15: freqArr[15 - offset] || 0,
+  };
+}
+
+// Stats for overall IV% from sum-frequency array where sum = index + minSum
+function computeOverallStatsFromFreq(freqSum, floor, n) {
+  if (n === 0) return null;
+  const minSum = floor * 3;
+  let sumTotal = 0, minVal = null, maxVal = null, modeIdx = 0;
+  for (let i = 0; i < freqSum.length; i++) {
+    const c = freqSum[i]; if (!c) continue;
+    const s = i + minSum;
+    sumTotal += s * c;
+    if (minVal === null) minVal = s;
+    maxVal = s;
+    if (c > freqSum[modeIdx]) modeIdx = i;
+  }
+  const meanSum = sumTotal / n;
+  let variance = 0;
+  for (let i = 0; i < freqSum.length; i++) {
+    const c = freqSum[i]; if (!c) continue;
+    variance += c * (i + minSum - meanSum) ** 2;
+  }
+  const std = Math.sqrt(variance / n) / 45 * 100;
+  let q25 = null, median = null, q75 = null, cum = 0;
+  for (let i = 0; i < freqSum.length; i++) {
+    const c = freqSum[i]; if (!c) continue;
+    const ivPct = (i + minSum) / 45 * 100; cum += c;
+    if (q25 === null && cum >= n * 0.25) q25 = ivPct;
+    if (median === null && cum >= n * 0.5)  median = ivPct;
+    if (q75 === null && cum >= n * 0.75) q75 = ivPct;
+  }
+  const toIvPct = s => s / 45 * 100;
+  return {
+    n, std,
+    mean:   toIvPct(meanSum),
+    median: median  ?? toIvPct(minVal ?? minSum),
+    min:    toIvPct(minVal ?? minSum),
+    max:    toIvPct(maxVal ?? 45),
+    q25:    q25     ?? toIvPct(minVal ?? minSum),
+    q75:    q75     ?? toIvPct(maxVal ?? 45),
+    mode:   toIvPct(modeIdx + minSum),
+    freqArr: freqSum, minSum,
+    perf15: freqSum[45 - minSum] || 0,
+  };
+}
+
+function renderSimIvChart(canvasId, s, color, isOverall) {
+  const canvas = document.getElementById(canvasId);
+  let labels, data;
+
+  if (isOverall) {
+    labels = [];
+    data = [];
+    for (let i = 0; i < s.freqArr.length; i++) {
+      labels.push(parseFloat(((i + s.minSum) / 45 * 100).toFixed(1)));
+      data.push(s.freqArr[i]);
+    }
+  } else {
+    labels = [];
+    data = [];
+    for (let i = 0; i < s.freqArr.length; i++) {
+      labels.push(i + s.offset);
+      data.push(s.freqArr[i]);
+    }
+  }
+
+  const strLabels = labels.map(l => String(l));
+  const barColors = labels.map(l => (isOverall ? l === 100 : l === 15) ? "#FFCB05" : color);
+
+  const ch = new Chart(canvas.getContext("2d"), {
+    type: "bar",
+    data: {
+      labels: strLabels,
+      datasets: [{
+        data,
+        backgroundColor: barColors,
+        borderColor: "rgba(255,255,255,0.08)",
+        borderWidth: 0.5,
+        borderRadius: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#16213e",
+          borderColor: "#0f3460",
+          borderWidth: 1,
+          titleColor: "#FFCB05",
+          bodyColor: "#e0e0e0",
+          displayColors: false,
+          callbacks: {
+            title: items => isOverall ? `${items[0].label}%` : `IV ${items[0].label}`,
+            label: function(item) {
+              const count = item.raw;
+              const n     = item.chart.options.plugins.simN || 1;
+              const freq  = n > 0 ? (count / n * 100).toFixed(1) : "0.0";
+              return ` ${count} catches (${freq}%)`;
+            },
+          }
+        },
+        simN: s.n,
+        simVertLine: { mean: s.mean, median: s.median },
+      },
+      scales: {
+        x: {
+          ticks: { color: "#8899aa", font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+          grid: { color: "rgba(255,255,255,0.03)" },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: "#8899aa", font: { size: 9 } },
+          grid: { color: "rgba(255,255,255,0.05)" },
+        }
+      }
+    }
+  });
+
+  return ch;
+}
+
+function renderSimStatsTable(sOv, sAtk, sDef, sSta, n, tableId = "sim-stats-table") {
+  const table = document.getElementById(tableId);
+  const f2 = v => v.toFixed(2);
+  const f0 = v => v.toFixed(0);
+
+  const rows = [
+    ["mean",   [f2(sOv.mean),   f2(sAtk.mean),   f2(sDef.mean),   f2(sSta.mean)]],
+    ["median", [f2(sOv.median), f2(sAtk.median), f2(sDef.median), f2(sSta.median)]],
+    ["std",    [f2(sOv.std),    f2(sAtk.std),    f2(sDef.std),    f2(sSta.std)]],
+    ["min",    [f0(sOv.min),    f0(sAtk.min),    f0(sDef.min),    f0(sSta.min)]],
+    ["max",    [f0(sOv.max),    f0(sAtk.max),    f0(sDef.max),    f0(sSta.max)]],
+    ["q25",    [f2(sOv.q25),    f2(sAtk.q25),    f2(sDef.q25),    f2(sSta.q25)]],
+    ["q75",    [f2(sOv.q75),    f2(sAtk.q75),    f2(sDef.q75),    f2(sSta.q75)]],
+    ["mode",   [f2(sOv.mode),   f2(sAtk.mode),   f2(sDef.mode),   f2(sSta.mode)]],
+  ];
+
+  const perf15Ov  = sOv.perf15  || 0;
+  const perf15Atk = sAtk.perf15 || 0;
+  const perf15Def = sDef.perf15 || 0;
+  const perf15Sta = sSta.perf15 || 0;
+
+  let html = `<thead><tr>
+    <th>Metric</th><th>Overall %</th><th>Attack</th><th>Defence</th><th>Stamina</th>
+  </tr></thead><tbody>`;
+
+  rows.forEach(([key, vals]) => {
+    html += `<tr><td>${key}</td>${vals.map(v => `<td>${v}</td>`).join("")}</tr>`;
+  });
+
+  html += `<tr class="sim-perf"><td>15/100 count</td>
+    <td>${perf15Ov}</td><td>${perf15Atk}</td><td>${perf15Def}</td><td>${perf15Sta}</td>
+  </tr>`;
+  html += `<tr class="sim-perf"><td>15/100 rate</td>
+    <td>${(perf15Ov/n*100).toFixed(1)}%</td>
+    <td>${(perf15Atk/n*100).toFixed(1)}%</td>
+    <td>${(perf15Def/n*100).toFixed(1)}%</td>
+    <td>${(perf15Sta/n*100).toFixed(1)}%</td>
+  </tr></tbody>`;
+
+  table.innerHTML = html;
+}
+
+// ── Async batched simulation ───────────────────────────────────────────────────
+const BATCH_SIZE = 2000000;
+let simAbort = false;
+
+function simSetRunning(on) {
+  document.getElementById("sim-run").disabled = on;
+  document.getElementById("sim-stop").classList.toggle("hidden", !on);
+  document.getElementById("sim-progress").classList.toggle("hidden", !on);
+}
+
+function simUpdateCharts(sOv, sAtk, sDef, sSta, done, total, floor, enc, hundos, purifiables, isShadow) {
+  document.getElementById("sim-results").classList.remove("hidden");
+
+  let summaryHtml = `Simulated <strong>${done.toLocaleString()}</strong>${done < total ? ` / ${total.toLocaleString()}` : ""} ${enc.name} catches (IV floor ${floor}). `;
+  summaryHtml += `Found <span class="sim-highlight">${hundos.toLocaleString()}</span> hundo${hundos !== 1 ? "s" : ""} (${(hundos/done*100).toFixed(3)}%)`;
+  if (isShadow) summaryHtml += ` and <span class="sim-highlight">${purifiables.toLocaleString()}</span> purifiable hundo${purifiables !== 1 ? "s" : ""} (&ge;13/13/13, ${(purifiables/done*100).toFixed(3)}%)`;
+  summaryHtml += ".";
+  document.getElementById("sim-summary").innerHTML = summaryHtml;
+
+  if (simCharts.length === 0) {
+    simCharts.push(renderSimIvChart("sim-chart-ov",  sOv,  "#4C72B0", true));
+    simCharts.push(renderSimIvChart("sim-chart-atk", sAtk, "#DD8452", false));
+    simCharts.push(renderSimIvChart("sim-chart-def", sDef, "#55A868", false));
+    simCharts.push(renderSimIvChart("sim-chart-sta", sSta, "#C44E52", false));
+  } else {
+    // Update existing charts in-place
+    function refreshChart(ch, s, isOverall) {
+      const labels = [], data = [];
+      if (isOverall) {
+        for (let i = 0; i < s.freqArr.length; i++) {
+          labels.push(String(parseFloat(((i + s.minSum) / 45 * 100).toFixed(1))));
+          data.push(s.freqArr[i]);
+        }
+      } else {
+        for (let i = 0; i < s.freqArr.length; i++) { labels.push(String(i + s.offset)); data.push(s.freqArr[i]); }
+      }
+      ch.data.labels = labels;
+      ch.data.datasets[0].data = data;
+      ch.options.plugins.simN = s.n;
+      ch.options.plugins.simVertLine = { mean: s.mean, median: s.median };
+      ch.update("none");
+    }
+    refreshChart(simCharts[0], sOv,  true);
+    refreshChart(simCharts[1], sAtk, false);
+    refreshChart(simCharts[2], sDef, false);
+    refreshChart(simCharts[3], sSta, false);
+  }
+
+  renderSimStatsTable(sOv, sAtk, sDef, sSta, done);
+}
+
+async function runSimulation() {
+  document.getElementById("trade-sim-panel").classList.add("hidden");
+  clearTradeResults();
+  const enc   = ENCOUNTERS.find(e => e.id === state.encId);
+  const floor = enc.floor;
+  const count = Math.max(1, Math.min(Number.MAX_SAFE_INTEGER, parseInt(document.getElementById("sim-count").value) || 200));
+  const isShadow = state.encId === "shadow";
+
+  const range   = 16 - floor;
+  const pThresh = 13 - floor;
+  const freqAtk = new Int32Array(range);
+  const freqDef = new Int32Array(range);
+  const freqSta = new Int32Array(range);
+  const freqSum = new Int32Array(3 * range - 2);
+  let hundos = 0, purifiables = 0, done = 0;
+
+  simAbort = false;
+  simSetRunning(true);
+  simCharts.forEach(ch => ch.destroy());
+  simCharts = [];
+
+  while (done < count && !simAbort) {
+    const perFrame  = Math.min(BATCH_SIZE, Math.max(1, Math.floor(done / 50)));
+    const frameDelay = Math.floor(30 / perFrame);
+    const batch = Math.min(perFrame, count - done);
+    for (let i = 0; i < batch; i++) {
+      const ai = Math.floor(Math.random() * range);
+      const di = Math.floor(Math.random() * range);
+      const si = Math.floor(Math.random() * range);
+      freqAtk[ai]++; freqDef[di]++; freqSta[si]++;
+      freqSum[ai + di + si]++;
+      if (ai === range - 1 && di === range - 1 && si === range - 1) hundos++;
+      if (ai >= pThresh && di >= pThresh && si >= pThresh) purifiables++;
+    }
+    done += batch;
+
+    const pct = Math.round(done / count * 100);
+    document.getElementById("sim-progress").textContent = `${pct}% (${done.toLocaleString()} / ${count.toLocaleString()})`;
+
+    const sOv  = computeOverallStatsFromFreq(freqSum, floor, done);
+    const sAtk = simCalcStatsFromFreq(freqAtk, floor, done);
+    const sDef = simCalcStatsFromFreq(freqDef, floor, done);
+    const sSta = simCalcStatsFromFreq(freqSta, floor, done);
+    simUpdateCharts(sOv, sAtk, sDef, sSta, done, count, floor, enc, hundos, purifiables, isShadow);
+
+    if (done < count) await new Promise(r => frameDelay > 0 ? setTimeout(r, frameDelay) : requestAnimationFrame(r));
+  }
+
+  simSetRunning(false);
+  if (window._mcCheckMaxSim) window._mcCheckMaxSim(count, simAbort);
+}
+
+document.getElementById("sim-run").addEventListener("click", runSimulation);
+document.getElementById("sim-stop").addEventListener("click", () => { simAbort = true; });
+
+// ── Trade simulator ────────────────────────────────────────────────────────────
+let tradeSimCharts = { lucky: [], nonlucky: [], total: [] };
+
+function clearTradeResults() {
+  if (!document.getElementById("trade-results")) return;
+  document.getElementById("trade-results").classList.add("hidden");
+  [...tradeSimCharts.lucky, ...tradeSimCharts.nonlucky, ...tradeSimCharts.total].forEach(ch => ch.destroy());
+  tradeSimCharts = { lucky: [], nonlucky: [], total: [] };
+}
+
+function updateTradeSimVisibility() {
+  const isLucky = state.encId === "lucky";
+  document.getElementById("trade-sim-toggle").classList.toggle("hidden", !isLucky);
+  if (!isLucky) {
+    document.getElementById("trade-sim-panel").classList.add("hidden");
+    clearTradeResults();
+  }
+}
+
+document.getElementById("trade-sim-toggle").addEventListener("click", () => {
+  const panel = document.getElementById("trade-sim-panel");
+  const simResults = document.getElementById("sim-results");
+  const opening = panel.classList.contains("hidden");
+  panel.classList.toggle("hidden");
+  if (opening) simResults.classList.add("hidden");
+});
+
+
+let tradeAbort = false;
+
+function tradeSetRunning(on) {
+  document.getElementById("trade-run").disabled = on;
+  document.getElementById("trade-stop").classList.toggle("hidden", !on);
+  document.getElementById("trade-progress").classList.toggle("hidden", !on);
+}
+
+function tradeUpdateCharts(
+  lFreqAtk, lFreqDef, lFreqSta, lFreqSum, lCount, lHundos,
+  nFreqAtk, nFreqDef, nFreqSta, nFreqSum, nCount, nHundos,
+  nonLuckyFloor, count, luckyRate, done
+) {
+  const totalHundos = lHundos + nHundos;
+  const ratePct  = (luckyRate * 100).toFixed(0);
+  const actualPct = (lCount / done * 100).toFixed(1);
+  document.getElementById("trade-summary").innerHTML =
+    `Simulated <strong>${done.toLocaleString()}</strong>${done < count ? ` / ${count.toLocaleString()}` : ""} trades at <strong>${ratePct}% lucky rate</strong>. ` +
+    `<span class="sim-highlight">${lCount.toLocaleString()}</span> went lucky (${actualPct}%), ` +
+    `<strong>${nCount.toLocaleString()}</strong> did not (IV floor ${nonLuckyFloor}, friendship floor).<br>` +
+    `Total: <span class="sim-highlight">${totalHundos.toLocaleString()}</span> hundo${totalHundos !== 1 ? "s" : ""} ` +
+    `(lucky: <span class="sim-highlight">${lHundos.toLocaleString()}</span>, non-lucky: <span class="sim-highlight">${nHundos.toLocaleString()}</span>).`;
+
+  const minFloor = Math.min(12, nonLuckyFloor);
+  const tRange   = 16 - minFloor;
+  const lRange   = 4, nRange = 16 - nonLuckyFloor;
+  const tFreqAtk = new Int32Array(tRange), tFreqDef = new Int32Array(tRange), tFreqSta = new Int32Array(tRange);
+  const tFreqSum = new Int32Array(3 * tRange - 2);
+  const lOff = 12 - minFloor, nOff = nonLuckyFloor - minFloor;
+  const lSumOff = lOff * 3, nSumOff = nOff * 3;
+  for (let i = 0; i < lRange; i++) { tFreqAtk[i+lOff] += lFreqAtk[i]; tFreqDef[i+lOff] += lFreqDef[i]; tFreqSta[i+lOff] += lFreqSta[i]; }
+  for (let i = 0; i < nRange; i++) { tFreqAtk[i+nOff] += nFreqAtk[i]; tFreqDef[i+nOff] += nFreqDef[i]; tFreqSta[i+nOff] += nFreqSta[i]; }
+  for (let i = 0; i < lFreqSum.length; i++) if (lFreqSum[i]) tFreqSum[i+lSumOff] += lFreqSum[i];
+  for (let i = 0; i < nFreqSum.length; i++) if (nFreqSum[i]) tFreqSum[i+nSumOff] += nFreqSum[i];
+
+  function refreshOrCreate(charts, ids, statsArr, colors, isOveralls) {
+    if (charts.length === 0) {
+      ids.forEach((id, k) => charts.push(renderSimIvChart(id, statsArr[k], colors[k], isOveralls[k])));
+    } else {
+      charts.forEach((ch, k) => {
+        const s = statsArr[k]; const isOv = isOveralls[k];
+        const labels = [], data = [];
+        if (isOv) { for (let i = 0; i < s.freqArr.length; i++) { labels.push(String(parseFloat(((i+s.minSum)/45*100).toFixed(1)))); data.push(s.freqArr[i]); } }
+        else       { for (let i = 0; i < s.freqArr.length; i++) { labels.push(String(i+s.offset)); data.push(s.freqArr[i]); } }
+        ch.data.labels = labels; ch.data.datasets[0].data = data;
+        ch.options.plugins.simN = s.n;
+        ch.options.plugins.simVertLine = { mean: s.mean, median: s.median };
+        ch.update("none");
+      });
+    }
+  }
+
+  // Lucky
+  const luckyGrid = document.getElementById("trade-lucky-charts");
+  const luckyNoData = document.getElementById("trade-lucky-no-data");
+  const luckyStatsWrap = document.getElementById("trade-lucky-stats-wrap");
+  if (lCount > 0) {
+    luckyNoData.classList.add("hidden"); luckyGrid.style.display = ""; luckyStatsWrap.classList.remove("hidden");
+    const sLOv = computeOverallStatsFromFreq(lFreqSum, 12, lCount);
+    const stats = [sLOv, simCalcStatsFromFreq(lFreqAtk,12,lCount), simCalcStatsFromFreq(lFreqDef,12,lCount), simCalcStatsFromFreq(lFreqSta,12,lCount)];
+    refreshOrCreate(tradeSimCharts.lucky, ["trade-chart-lucky-ov","trade-chart-lucky-atk","trade-chart-lucky-def","trade-chart-lucky-sta"], stats, ["#4C72B0","#DD8452","#55A868","#C44E52"], [true,false,false,false]);
+    renderSimStatsTable(stats[0], stats[1], stats[2], stats[3], lCount, "trade-lucky-stats-table");
+  } else {
+    luckyNoData.classList.remove("hidden"); luckyGrid.style.display = "none"; luckyStatsWrap.classList.add("hidden");
+  }
+
+  // Non-lucky
+  const nlGrid = document.getElementById("trade-nonlucky-charts");
+  const nlNoData = document.getElementById("trade-nl-no-data");
+  const nlStatsWrap = document.getElementById("trade-nl-stats-wrap");
+  if (nCount > 0) {
+    nlNoData.classList.add("hidden"); nlGrid.style.display = ""; nlStatsWrap.classList.remove("hidden");
+    const sNOv = computeOverallStatsFromFreq(nFreqSum, nonLuckyFloor, nCount);
+    const stats = [sNOv, simCalcStatsFromFreq(nFreqAtk,nonLuckyFloor,nCount), simCalcStatsFromFreq(nFreqDef,nonLuckyFloor,nCount), simCalcStatsFromFreq(nFreqSta,nonLuckyFloor,nCount)];
+    refreshOrCreate(tradeSimCharts.nonlucky, ["trade-chart-nl-ov","trade-chart-nl-atk","trade-chart-nl-def","trade-chart-nl-sta"], stats, ["#4C72B0","#DD8452","#55A868","#C44E52"], [true,false,false,false]);
+    renderSimStatsTable(stats[0], stats[1], stats[2], stats[3], nCount, "trade-nl-stats-table");
+  } else {
+    nlNoData.classList.remove("hidden"); nlGrid.style.display = "none"; nlStatsWrap.classList.add("hidden");
+  }
+
+  // Total
+  const sTOv  = computeOverallStatsFromFreq(tFreqSum, minFloor, done);
+  const totalStats = [sTOv, simCalcStatsFromFreq(tFreqAtk,minFloor,done), simCalcStatsFromFreq(tFreqDef,minFloor,done), simCalcStatsFromFreq(tFreqSta,minFloor,done)];
+  refreshOrCreate(tradeSimCharts.total, ["trade-chart-total-ov","trade-chart-total-atk","trade-chart-total-def","trade-chart-total-sta"], totalStats, ["#7B68EE","#7B68EE","#7B68EE","#7B68EE"], [true,false,false,false]);
+  renderSimStatsTable(totalStats[0], totalStats[1], totalStats[2], totalStats[3], done, "trade-total-stats-table");
+}
+
+async function runTradeSimulation() {
+  const luckyRate     = parseFloat(document.getElementById("trade-year").value);
+  const nonLuckyFloor = parseInt(document.getElementById("trade-friendship").value);
+  const count = Math.max(1, Math.min(Number.MAX_SAFE_INTEGER, parseInt(document.getElementById("trade-count").value) || 200));
+
+  const lRange = 4;
+  const nRange = 16 - nonLuckyFloor;
+
+  const lFreqAtk = new Int32Array(lRange), lFreqDef = new Int32Array(lRange), lFreqSta = new Int32Array(lRange);
+  const lFreqSum = new Int32Array(3 * lRange - 2);
+  const nFreqAtk = new Int32Array(nRange), nFreqDef = new Int32Array(nRange), nFreqSta = new Int32Array(nRange);
+  const nFreqSum = new Int32Array(3 * nRange - 2);
+  let lCount = 0, nCount = 0, lHundos = 0, nHundos = 0, done = 0;
+
+  tradeAbort = false;
+  tradeSetRunning(true);
+  clearTradeResults();
+  document.getElementById("trade-results").classList.remove("hidden");
+
+  while (done < count && !tradeAbort) {
+    const perFrame   = Math.min(BATCH_SIZE, Math.max(1, Math.floor(done / 50)));
+    const frameDelay = Math.floor(30 / perFrame);
+    const batch = Math.min(perFrame, count - done);
+    for (let i = 0; i < batch; i++) {
+      if (Math.random() < luckyRate) {
+        const ai = Math.floor(Math.random() * lRange);
+        const di = Math.floor(Math.random() * lRange);
+        const si = Math.floor(Math.random() * lRange);
+        lFreqAtk[ai]++; lFreqDef[di]++; lFreqSta[si]++;
+        lFreqSum[ai + di + si]++; lCount++;
+        if (ai === lRange-1 && di === lRange-1 && si === lRange-1) lHundos++;
+      } else {
+        const ai = Math.floor(Math.random() * nRange);
+        const di = Math.floor(Math.random() * nRange);
+        const si = Math.floor(Math.random() * nRange);
+        nFreqAtk[ai]++; nFreqDef[di]++; nFreqSta[si]++;
+        nFreqSum[ai + di + si]++; nCount++;
+        if (ai === nRange-1 && di === nRange-1 && si === nRange-1) nHundos++;
+      }
+    }
+    done += batch;
+
+    const pct = Math.round(done / count * 100);
+    document.getElementById("trade-progress").textContent = `${pct}% (${done.toLocaleString()} / ${count.toLocaleString()})`;
+
+    tradeUpdateCharts(lFreqAtk, lFreqDef, lFreqSta, lFreqSum, lCount, lHundos,
+                      nFreqAtk, nFreqDef, nFreqSta, nFreqSum, nCount, nHundos,
+                      nonLuckyFloor, count, luckyRate, done);
+
+    if (done < count) await new Promise(r => frameDelay > 0 ? setTimeout(r, frameDelay) : requestAnimationFrame(r));
+  }
+
+  tradeSetRunning(false);
+  if (window._mcCheckMaxSim) window._mcCheckMaxSim(count, tradeAbort);
+}
+
+document.getElementById("trade-run").addEventListener("click", runTradeSimulation);
+document.getElementById("trade-stop").addEventListener("click", () => { tradeAbort = true; });
+
 // ── Init ──────────────────────────────────────────────────────────────────────
+(function buildTradeYearSelect() {
+  const sel = document.getElementById("trade-year");
+  const y = new Date().getFullYear();
+  sel.innerHTML =
+    `<option value="0.05">${y} - current (5% lucky)</option>` +
+    `<option value="0.10">${y - 1} - 1 yr old (10% lucky)</option>` +
+    `<option value="0.15">${y - 2} - 2 yrs old (15% lucky)</option>` +
+    `<option value="0.20" selected>${y - 3} or older (20% lucky)</option>`;
+})();
+
 buildEncGrid();
 buildGoalRow();
 resizePctInput();
 update();
+
+// ── Minecraft "How did we get here?" Achievement ───────────────────────────
+(function() {
+  const el = document.getElementById("mc-achievement");
+
+  function showAchievement() {
+    el.classList.add("mc-visible");
+  }
+
+  document.getElementById("mc-close").addEventListener("click", () => {
+    el.classList.remove("mc-visible");
+  });
+
+  // Real trigger: max simulation count ran to completion without stopping
+  window._mcCheckMaxSim = function(count, stopped) {
+    if (!stopped && count >= Number.MAX_SAFE_INTEGER) showAchievement();
+  };
+
+  // Test trigger: type howDidWeGetHere() in the browser console
+  window.howDidWeGetHere = showAchievement;
+})();
 </script>
 </body>
 </html>
