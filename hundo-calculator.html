@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hundo Catch Calculator</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'><circle cx='50' cy='50' r='48' fill='none' stroke='%23FFCB05' stroke-width='4'/><path d='M2 50 Q2 2 50 2 Q98 2 98 50Z' fill='%23e74c3c'/><path d='M2 50 Q2 98 50 98 Q98 98 98 50Z' fill='%23eee'/><rect x='2' y='46' width='96' height='8' fill='%23333'/><circle cx='50' cy='50' r='13' fill='%23333' stroke='%23FFCB05' stroke-width='3'/><circle cx='50' cy='50' r='7' fill='%23fff'/></svg>">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue:   #0075BE;
+    --gold:   #FFCB05;
+    --navy:   #1a1a2e;
+    --card:   #16213e;
+    --border: #0f3460;
+    --text:   #e0e0e0;
+    --muted:  #8899aa;
+    --red:    #e74c3c;
+    --shadow-purple: #9b59b6;
+  }
+
+  body {
+    background: var(--navy);
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  /* ── Header ─────────────────────────────────────────────────────────────── */
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .pokeball {
+    display: inline-block;
+    width: 56px; height: 56px;
+    margin-bottom: 12px;
+  }
+
+  header h1 {
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    font-weight: 800;
+    color: var(--gold);
+    text-shadow: 0 0 24px rgba(255,203,5,0.4);
+    letter-spacing: -0.5px;
+  }
+
+  header p {
+    color: var(--muted);
+    margin-top: 6px;
+    font-size: 0.95rem;
+  }
+
+  /* ── Layout ─────────────────────────────────────────────────────────────── */
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 24px;
+  }
+
+  section h2 {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  /* ── Encounter cards ─────────────────────────────────────────────────────── */
+  .encounter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+
+  .enc-card {
+    background: var(--navy);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+    text-align: center;
+    user-select: none;
+  }
+
+  .enc-card:hover {
+    border-color: var(--gold);
+    box-shadow: 0 0 10px rgba(255,203,5,0.25);
+    transform: translateY(-2px);
+  }
+
+  .enc-card.selected {
+    border-color: var(--gold);
+    box-shadow: 0 0 16px rgba(255,203,5,0.4);
+    background: #1e1e3a;
+  }
+
+  .enc-icon { font-size: 1.8rem; margin-bottom: 4px; }
+
+  .enc-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .enc-sub {
+    font-size: 0.68rem;
+    color: var(--muted);
+    line-height: 1.3;
+  }
+
+  /* ── Goal toggles ────────────────────────────────────────────────────────── */
+  .goal-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .goal-btn {
+    flex: 1;
+    min-width: 140px;
+    padding: 12px 16px;
+    background: var(--navy);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    text-align: center;
+  }
+
+  .goal-btn:hover { border-color: var(--blue); }
+
+  .goal-btn.selected {
+    border-color: var(--blue);
+    background: #0a2540;
+    box-shadow: 0 0 12px rgba(0,117,190,0.35);
+    color: #fff;
+  }
+
+  .goal-btn .goal-sub {
+    display: block;
+    font-size: 0.68rem;
+    color: var(--muted);
+    margin-top: 3px;
+    font-weight: 400;
+  }
+
+  #goal-section { transition: opacity 0.2s; }
+  #goal-section.hidden { display: none; }
+
+  /* ── Probability slider ──────────────────────────────────────────────────── */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    outline: none;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--gold);
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(255,203,5,0.5);
+  }
+
+  .pct-input {
+    width: auto;
+    min-width: 52px;
+    background: var(--navy);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 6px 8px;
+    text-align: center;
+  }
+
+  .pct-input:focus { outline: 1px solid var(--gold); }
+  .pct-input.input-warn { border-color: #e67e22; outline: 1px solid #e67e22; }
+
+  .pct-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .pct-warn {
+    position: absolute;
+    top: calc(100% + 7px);
+    left: 0;
+    background: #1a1a2e;
+    border: 1px solid #e67e22;
+    border-radius: 6px;
+    padding: 4px 9px;
+    font-size: 0.72rem;
+    color: #e67e22;
+    white-space: nowrap;
+    display: none;
+    z-index: 20;
+    pointer-events: none;
+  }
+
+  .pct-warn::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 12px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid #e67e22;
+  }
+
+  .pct-warn.visible { display: block; }
+
+  .chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--navy);
+    color: var(--muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .chip:hover, .chip.active {
+    background: var(--gold);
+    color: var(--navy);
+    border-color: var(--gold);
+    font-weight: 700;
+  }
+
+  /* ── Results ─────────────────────────────────────────────────────────────── */
+  .result-hero {
+    text-align: center;
+    padding: 12px 0 18px;
+  }
+
+  .result-hero .big-num {
+    font-size: clamp(3rem, 10vw, 5rem);
+    font-weight: 900;
+    color: var(--gold);
+    line-height: 1;
+    text-shadow: 0 0 30px rgba(255,203,5,0.4);
+  }
+
+  .result-hero .big-label {
+    font-size: 1rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .result-hero .rate-line {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+
+  .already-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .already-row label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .already-input {
+    width: 90px;
+    background: var(--navy);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 6px 10px;
+    text-align: center;
+  }
+
+  .already-input:focus { outline: 1px solid var(--blue); }
+
+  .already-result {
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+
+  .already-result span {
+    font-weight: 700;
+    color: var(--blue);
+  }
+
+  /* ── Threshold table ─────────────────────────────────────────────────────── */
+  .thresh-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    margin-top: 4px;
+  }
+
+  .thresh-table th {
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 6px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .thresh-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .thresh-table tr.highlight td {
+    color: var(--gold);
+    font-weight: 700;
+  }
+
+  .thresh-table td:last-child { text-align: right; color: var(--muted); font-size: 0.8rem; }
+
+  /* ── Chart ───────────────────────────────────────────────────────────────── */
+  .chart-wrap {
+    position: relative;
+    height: 280px;
+  }
+
+
+  .chart-legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 12px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .legend-item svg { flex-shrink: 0; }
+
+  /* ── Fun facts ───────────────────────────────────────────────────────────── */
+  .facts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+
+  .fact-card {
+    background: var(--navy);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .fact-icon { font-size: 1.5rem; line-height: 1; }
+
+  .fact-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+
+  .fact-text {
+    font-size: 0.88rem;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .fact-text strong { color: var(--gold); font-weight: 700; }
+
+  /* ── Advanced section ───────────────────────────────────────────────────── */
+  .adv-details {
+    max-width: 860px;
+    margin: 0 auto;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--card);
+    overflow: hidden;
+  }
+
+  .adv-details summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 24px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    list-style: none;
+    user-select: none;
+    transition: color 0.15s;
+  }
+
+  .adv-details summary::-webkit-details-marker { display: none; }
+  .adv-details summary:hover { color: var(--text); }
+
+  .adv-arrow {
+    font-size: 0.65rem;
+    transition: transform 0.2s;
+    display: inline-block;
+  }
+
+  .adv-details[open] .adv-arrow { transform: rotate(90deg); }
+
+  .adv-body {
+    padding: 0 24px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .adv-block h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+
+  .adv-block p {
+    font-size: 0.88rem;
+    color: var(--text);
+    line-height: 1.65;
+    margin-bottom: 8px;
+  }
+
+  .adv-block p:last-child { margin-bottom: 0; }
+
+  .adv-formula {
+    background: var(--navy);
+    border-left: 3px solid var(--blue);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 16px;
+    font-family: "Courier New", monospace;
+    font-size: 0.88rem;
+    color: #a8d8ff;
+    line-height: 1.8;
+    margin: 10px 0;
+    white-space: pre-wrap;
+  }
+
+  .adv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    margin-top: 8px;
+  }
+
+  .adv-table th {
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 6px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .adv-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text);
+  }
+
+  .adv-table tr:last-child td { border-bottom: none; }
+
+  .adv-sources ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .adv-sources li {
+    font-size: 0.83rem;
+    color: var(--muted);
+    padding-left: 12px;
+    border-left: 2px solid var(--border);
+  }
+
+  .adv-sources a {
+    color: #6ab0f5;
+    text-decoration: none;
+  }
+
+  .adv-sources a:hover { text-decoration: underline; }
+
+  .adv-disclosure {
+    font-size: 0.78rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    margin-top: 4px;
+  }
+
+  /* ── Utility ─────────────────────────────────────────────────────────────── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <!-- Pokeball SVG -->
+  <svg class="pokeball" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="48" fill="none" stroke="#FFCB05" stroke-width="4"/>
+    <path d="M2 50 Q2 2 50 2 Q98 2 98 50Z" fill="#e74c3c"/>
+    <path d="M2 50 Q2 98 50 98 Q98 98 98 50Z" fill="#eee"/>
+    <rect x="2" y="46" width="96" height="8" fill="#333"/>
+    <circle cx="50" cy="50" r="13" fill="#333" stroke="#FFCB05" stroke-width="3"/>
+    <circle cx="50" cy="50" r="7" fill="#fff"/>
+  </svg>
+  <h1>Hundo Catch Calculator</h1>
+  <p>How many catches for your dream Pokemon GO IV roll?</p>
+</header>
+
+<div class="container">
+
+  <!-- Encounter type -->
+  <section>
+    <h2>Encounter Type</h2>
+    <div class="encounter-grid" id="enc-grid"></div>
+  </section>
+
+  <!-- Goal -->
+  <section id="goal-section">
+    <h2>Goal</h2>
+    <div class="goal-row" id="goal-row"></div>
+  </section>
+
+  <!-- Target probability -->
+  <section>
+    <h2>Target Probability</h2>
+    <div class="slider-row">
+      <input type="range" id="prob-slider" min="5" max="99.9999" step="0.0001" value="95">
+      <div class="pct-input-wrap">
+        <input type="text" inputmode="decimal" id="prob-input" class="pct-input" value="95" autocomplete="off" spellcheck="false"> %
+        <div class="pct-warn" id="pct-warn">max 4 decimal places</div>
+      </div>
+    </div>
+    <div class="chips" id="chips">
+      <span class="chip" data-v="50">50%</span>
+      <span class="chip" data-v="75">75%</span>
+      <span class="chip" data-v="90">90%</span>
+      <span class="chip active" data-v="95">95%</span>
+      <span class="chip" data-v="99">99%</span>
+      <span class="chip" data-v="99.9">99.9%</span>
+      <span class="chip" data-v="100">100%</span>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section>
+    <h2>Result</h2>
+    <div class="result-hero">
+      <div class="big-num" id="res-n">-</div>
+      <div class="big-label">catches needed</div>
+      <div class="rate-line" id="res-rate"></div>
+    </div>
+
+    <hr class="divider">
+
+    <table class="thresh-table">
+      <thead>
+        <tr>
+          <th>Confidence</th>
+          <th>Catches needed</th>
+          <th>Expected hundos</th>
+        </tr>
+      </thead>
+      <tbody id="thresh-body"></tbody>
+    </table>
+
+    <div class="already-row">
+      <label for="already-input">Already caught:</label>
+      <input type="number" id="already-input" class="already-input" min="0" value="0" placeholder="0">
+      <div class="already-result" id="already-result"></div>
+    </div>
+  </section>
+
+  <!-- Chart -->
+  <section>
+    <h2>Probability Curve</h2>
+    <div class="chart-wrap">
+      <canvas id="prob-chart"></canvas>
+    </div>
+    <div class="chart-legend">
+      <span class="legend-item">
+        <svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#FFCB05" stroke-width="2.5"/></svg>
+        Cumulative probability
+      </span>
+      <span class="legend-item">
+        <svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="rgba(0,117,190,0.7)" stroke-width="1.5" stroke-dasharray="5,3"/></svg>
+        Target probability
+      </span>
+      <span class="legend-item">
+        <svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="rgba(231,76,60,0.75)" stroke-width="1.5" stroke-dasharray="5,3"/></svg>
+        Catches needed
+      </span>
+    </div>
+  </section>
+
+  <!-- Fun facts -->
+  <section>
+    <h2>Fun Facts</h2>
+    <div class="facts-grid" id="facts-grid"></div>
+  </section>
+
+  <!-- Advanced math -->
+  <details class="adv-details">
+    <summary>
+      <span class="adv-arrow">&#9654;</span>
+      How the math works
+    </summary>
+    <div class="adv-body">
+
+      <div class="adv-block">
+        <h3>Step 1 - Probability per catch</h3>
+        <p>
+          Each of the three IV stats (Attack, Defence, Stamina) is rolled independently
+          and uniformly from the encounter's IV range. If there are <em>v</em> possible
+          values per stat, the chance that all three land on 15/15/15 is:
+        </p>
+        <div class="adv-formula">p = (1/v)³ = 1/v³</div>
+        <p>
+          For a <strong>Regular Raid</strong> (floor 10 → values 10–15, so v = 6):<br>
+          p = 1/6³ = <strong>1/216 ≈ 0.463%</strong>
+        </p>
+        <p>
+          For a <strong>Purified Hundo</strong> from a Shadow/Giovanni catch, purification
+          adds +2 to every stat, so you need each pre-purification stat to be ≥ 13.
+          With a floor of 6, the values ≥ 13 are {13, 14, 15} → 3 out of 10:
+        </p>
+        <div class="adv-formula">p = (3/10)³ = 27/1000 = <strong>2.7%</strong></div>
+      </div>
+
+      <div class="adv-block">
+        <h3>Step 2 - Probability of <em>at least one</em> in <em>n</em> catches</h3>
+        <p>
+          Each catch is an independent Bernoulli trial. The chance of getting
+          <em>zero</em> successes in <em>n</em> tries is (1 − p)ⁿ, so:
+        </p>
+        <div class="adv-formula">P(at least one in n catches) = 1 − (1 − p)ⁿ</div>
+        <p>
+          This is the cumulative geometric distribution. It grows quickly at first
+          and asymptotically approaches 100% - which is why the curve on the chart
+          flattens out rather than reaching 100% in a straight line.
+        </p>
+      </div>
+
+      <div class="adv-block">
+        <h3>Step 3 - Solving for <em>n</em></h3>
+        <p>
+          To find the number of catches needed to reach a target probability T,
+          invert the formula by taking logarithms of both sides:
+        </p>
+        <div class="adv-formula">
+          1 − (1 − p)ⁿ ≥ T<br>
+          (1 − p)ⁿ ≤ 1 − T<br>
+          n · ln(1 − p) ≤ ln(1 − T)<br><br>
+          n ≥ ln(1 − T) / ln(1 − p)
+        </div>
+        <p>
+          Since catches are whole numbers, we round up (ceiling). For example,
+          with a Regular Raid hundo at T = 95%:
+        </p>
+        <div class="adv-formula">
+          n = ⌈ ln(0.05) / ln(215/216) ⌉ = ⌈ −2.996 / −0.004630 ⌉ = <strong>647</strong>
+        </div>
+      </div>
+
+      <div class="adv-block">
+        <h3>The memoryless property</h3>
+        <p>
+          Past catches have no effect on future ones - each roll is independent.
+          If you have caught 200 Regular Raid bosses without a hundo, your chance
+          on catch #201 is still exactly 1/216. The "Already caught" field above
+          does not <em>reduce</em> how many more you need; it shows your
+          <em>cumulative probability so far</em> using the same formula:
+        </p>
+        <div class="adv-formula">P(at least one hundo in your catches so far) = 1 − (1 − p)^already_caught</div>
+      </div>
+
+      <div class="adv-block">
+        <h3>IV rate reference table</h3>
+        <table class="adv-table">
+          <thead>
+            <tr><th>Encounter</th><th>IV floor</th><th>Values/stat</th><th>Hundo rate</th><th>Purified hundo rate</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Regular Raid</td><td>10</td><td>6</td><td>1/216 (0.463%)</td><td>-</td></tr>
+            <tr><td>Egg Hatch</td><td>10</td><td>6</td><td>1/216 (0.463%)</td><td>-</td></tr>
+            <tr><td>Research</td><td>10</td><td>6</td><td>1/216 (0.463%)</td><td>-</td></tr>
+            <tr><td>Shadow / Giovanni</td><td>6</td><td>10</td><td>1/1000 (0.1%)</td><td>27/1000 (2.7%)</td></tr>
+            <tr><td>Lucky Trade</td><td>12</td><td>4</td><td>1/64 (1.563%)</td><td>-</td></tr>
+            <tr><td>Wild Catch</td><td>0</td><td>16</td><td>1/4096 (0.024%)</td><td>-</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="adv-block adv-sources">
+        <h3>Sources</h3>
+        <ul>
+          <li><a href="https://db.pokemongohub.net/tools/hundo-odds" target="_blank" rel="noopener">Perfect IV (Hundo) Odds - Pokémon GO Hub Database</a> - hundo rates per encounter type</li>
+          <li><a href="https://www.dittobase.com/pokemon-go/hundo-odds" target="_blank" rel="noopener">Pokémon GO Hundo Odds: Perfect IV Chances by Encounter Type - Dittobase</a> - raid IV floor (10) and 1/216 calculation</li>
+          <li><a href="https://pokemongohub.net/post/guide/shadow-pokemon-guide/" target="_blank" rel="noopener">Shadow Pokémon Guide - Pokémon GO Hub</a> - Shadow IV floor (6/6/6), Giovanni reward IVs</li>
+          <li><a href="https://www.pokeranks.com/guides/Will-purifying-my-Shadow-Pokemon-make-it-a-hundo" target="_blank" rel="noopener">Will Purifying My Shadow Pokémon Make It a Hundo? - PokéRanks</a> - +2 IV purification mechanic, ≥13/13/13 threshold</li>
+        </ul>
+      </div>
+
+      <div class="adv-disclosure">
+        <strong>AI Disclosure -</strong> While the best effort has been made to ensure correctness, Generative AI was used to make this website. Verify all sources.
+      </div>
+
+    </div>
+  </details>
+
+</div>
+
+<script>
+// ── Encounter data ────────────────────────────────────────────────────────────
+const ENCOUNTERS = [
+  {
+    id: "raid",
+    icon: "⚔️",
+    name: "Regular Raid",
+    sub: "IV floor 10\n1 in 216 hundo",
+    floor: 10,
+    values: 6,   // 10–15
+    goals: ["hundo"],
+  },
+  {
+    id: "shadow",
+    icon: "👤",
+    name: "Shadow / Giovanni",
+    sub: "IV floor 6\n1 in 1000 hundo",
+    floor: 6,
+    values: 10,  // 6–15
+    goals: ["hundo", "purified"],
+  },
+  {
+    id: "lucky",
+    icon: "🍀",
+    name: "Lucky Trade",
+    sub: "IV floor 12\n1 in 64 hundo",
+    floor: 12,
+    values: 4,   // 12–15
+    goals: ["hundo"],
+  },
+  {
+    id: "egg",
+    icon: "🥚",
+    name: "Egg Hatch",
+    sub: "IV floor 10\n1 in 216 hundo",
+    floor: 10,
+    values: 6,
+    goals: ["hundo"],
+  },
+  {
+    id: "research",
+    icon: "🔬",
+    name: "Research",
+    sub: "IV floor 10\n1 in 216 hundo",
+    floor: 10,
+    values: 6,
+    goals: ["hundo"],
+  },
+  {
+    id: "wild",
+    icon: "🌿",
+    name: "Wild Catch",
+    sub: "IV floor 0\n1 in 4096 hundo",
+    floor: 0,
+    values: 16,  // 0–15
+    goals: ["hundo"],
+  },
+];
+
+const GOALS = {
+  hundo: {
+    label: "Hundo (100% IV)",
+    sub: "All three stats = 15/15",
+    // rate = 1 / values^3
+    rate: (enc) => 1 / Math.pow(enc.values, 3),
+  },
+  purified: {
+    label: "Purified Hundo",
+    sub: "All stats ≥13 → purify → 15/15/15",
+    // need each stat >= 13; stats available from floor to 15
+    // values >= 13 = count of {13,14,15} that are >= floor
+    rate: (enc) => {
+      const total = enc.values;                         // values per stat
+      const good  = Math.max(0, 15 - Math.max(13, enc.floor) + 1); // stats >= 13
+      return Math.pow(good / total, 3);
+    },
+  },
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let state = {
+  encId:  "raid",
+  goalId: "hundo",
+  prob:   95,
+};
+
+// ── Math ──────────────────────────────────────────────────────────────────────
+function catchesNeeded(p_per_catch, target_pct) {
+  if (p_per_catch >= 1) return 1;
+  const t = target_pct / 100;
+  return Math.ceil(Math.log(1 - t) / Math.log(1 - p_per_catch));
+}
+
+function cumulativeProb(p_per_catch, n) {
+  return (1 - Math.pow(1 - p_per_catch, n)) * 100;
+}
+
+function currentRate() {
+  const enc  = ENCOUNTERS.find(e => e.id === state.encId);
+  const goal = GOALS[state.goalId];
+  return goal.rate(enc);
+}
+
+// ── Build encounter grid ──────────────────────────────────────────────────────
+function buildEncGrid() {
+  const grid = document.getElementById("enc-grid");
+  grid.innerHTML = "";
+  ENCOUNTERS.forEach(enc => {
+    const card = document.createElement("div");
+    card.className = "enc-card" + (enc.id === state.encId ? " selected" : "");
+    card.innerHTML = `
+      <div class="enc-icon">${enc.icon}</div>
+      <div class="enc-name">${enc.name}</div>
+      <div class="enc-sub">${enc.sub.replace("\n","<br>")}</div>
+    `;
+    card.addEventListener("click", () => {
+      state.encId = enc.id;
+      // reset goal if current goal not available
+      if (!enc.goals.includes(state.goalId)) state.goalId = enc.goals[0];
+      buildEncGrid();
+      buildGoalRow();
+      update();
+    });
+    grid.appendChild(card);
+  });
+}
+
+// ── Build goal row ────────────────────────────────────────────────────────────
+function buildGoalRow() {
+  const enc     = ENCOUNTERS.find(e => e.id === state.encId);
+  const section = document.getElementById("goal-section");
+  const row     = document.getElementById("goal-row");
+
+  if (enc.goals.length <= 1) {
+    section.classList.add("hidden");
+    return;
+  }
+  section.classList.remove("hidden");
+  row.innerHTML = "";
+
+  enc.goals.forEach(gid => {
+    const g   = GOALS[gid];
+    const btn = document.createElement("button");
+    btn.className = "goal-btn" + (gid === state.goalId ? " selected" : "");
+    btn.innerHTML = `${g.label}<span class="goal-sub">${g.sub}</span>`;
+    btn.addEventListener("click", () => {
+      state.goalId = gid;
+      buildGoalRow();
+      update();
+    });
+    row.appendChild(btn);
+  });
+}
+
+// ── Input mode tracking ───────────────────────────────────────────────────────
+// Tracks how the user last set the probability so we can format the display appropriately:
+//   slider/chip → integer (0 dp)
+//   arrow keys  → preserve dp from last typed value, or 1 dp if coming from slider
+//   typing      → preserve exactly what the user typed (up to 4 dp)
+let displayDp = 0;
+let inputMode = "slider";
+
+// Hidden ruler span for measuring input text width accurately
+const pctRuler = document.createElement("span");
+pctRuler.style.cssText = "position:fixed;visibility:hidden;pointer-events:none;font:700 1rem/1 system-ui,-apple-system,sans-serif;white-space:pre;";
+document.body.appendChild(pctRuler);
+
+function resizePctInput() {
+  const inp = document.getElementById("prob-input");
+  pctRuler.textContent = inp.value || "0";
+  // +20px accounts for horizontal padding (8px × 2) and a small margin
+  inp.style.width = Math.max(40, pctRuler.offsetWidth + 20) + "px";
+}
+
+function setPctValue(v, dp) {
+  const inp = document.getElementById("prob-input");
+  inp.value = dp === 0 ? String(Math.round(v)) : v.toFixed(dp);
+  resizePctInput();
+}
+
+// ── Chips ─────────────────────────────────────────────────────────────────────
+document.getElementById("chips").addEventListener("click", e => {
+  const chip = e.target.closest(".chip");
+  if (!chip) return;
+  const v   = parseFloat(chip.dataset.v);
+  const dot = chip.dataset.v.indexOf(".");
+  displayDp = dot === -1 ? 0 : chip.dataset.v.length - dot - 1;
+  inputMode = "slider";
+  state.prob = v;
+  document.getElementById("prob-slider").value = v;
+  setPctValue(v, displayDp);
+  syncChips(v);
+  update();
+});
+
+document.getElementById("prob-slider").addEventListener("input", e => {
+  const v = Math.round(parseFloat(e.target.value));
+  e.target.value = v;
+  displayDp = 0;
+  inputMode = "slider";
+  state.prob = v;
+  setPctValue(v, 0);
+  syncChips(v);
+  update();
+});
+
+document.getElementById("prob-input").addEventListener("keydown", e => {
+  if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+  e.preventDefault(); // stop browser snapping to step-aligned value
+
+  const inp     = e.target;
+  const current = parseFloat(inp.value);
+  if (isNaN(current)) return;
+
+  if (inputMode === "slider") displayDp = 1;
+  inputMode = "arrow";
+
+  const delta   = e.key === "ArrowUp" ? 0.1 : -0.1;
+  const dpToUse = Math.max(displayDp, 1);
+  // toFixed avoids float drift (e.g. 94.87 + 0.1 = 94.97, not 94.970000001)
+  const newV    = Math.max(0.0001, Math.min(100,
+    parseFloat((current + delta).toFixed(dpToUse))
+  ));
+
+  state.prob = newV;
+  document.getElementById("prob-slider").value = newV;
+  setPctValue(newV, dpToUse);
+  document.getElementById("pct-warn").classList.remove("visible");
+  inp.classList.remove("input-warn");
+  syncChips(newV);
+  update();
+});
+
+document.getElementById("prob-input").addEventListener("input", e => {
+  const warn = document.getElementById("pct-warn");
+  const inp  = e.target;
+
+  // Typing only - arrows are fully handled in keydown above
+  inputMode = "typed";
+
+  // Strip anything that isn't a digit or a single decimal point
+  let raw = inp.value.replace(/[^0-9.]/g, "");
+  const firstDot = raw.indexOf(".");
+  if (firstDot !== -1) raw = raw.slice(0, firstDot + 1) + raw.slice(firstDot + 1).replace(/\./g, "");
+  if (inp.value !== raw) inp.value = raw;
+
+  const dotIdx   = raw.indexOf(".");
+  const decimals = dotIdx === -1 ? 0 : raw.length - dotIdx - 1;
+
+  if (decimals > 4) {
+    inp.value = raw.slice(0, dotIdx + 5);
+    warn.classList.add("visible");
+    inp.classList.add("input-warn");
+  } else {
+    displayDp = decimals;
+    warn.classList.remove("visible");
+    inp.classList.remove("input-warn");
+  }
+
+  let v = parseFloat(inp.value);
+  if (isNaN(v)) return;
+  v = Math.max(0.0001, Math.min(100, v));
+  state.prob = v;
+  document.getElementById("prob-slider").value = v;
+  resizePctInput();
+  syncChips(v);
+  update();
+});
+
+function syncChips(v) {
+  document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.v == v));
+}
+
+document.getElementById("already-input").addEventListener("input", updateAlready);
+
+// ── Vertical line plugin ──────────────────────────────────────────────────────
+const vertLinePlugin = {
+  id: "vertLine",
+  afterDraw(chart) {
+    const xScale = chart.scales.x;
+    const yScale = chart.scales.y;
+    const c      = chart.ctx;
+
+    // Target-N line (red dashed)
+    const vx = chart._vertLineX;
+    if (vx != null) {
+      const xPx = xScale.getPixelForValue(vx);
+      const y0  = yScale.getPixelForValue(0);
+      const y1  = yScale.getPixelForValue(chart._vertLineY ?? 100);
+      c.save();
+      c.beginPath();
+      c.moveTo(xPx, y0);
+      c.lineTo(xPx, y1);
+      c.strokeStyle = "rgba(231,76,60,0.75)";
+      c.lineWidth   = 1.5;
+      c.setLineDash([6, 4]);
+      c.stroke();
+      c.restore();
+    }
+
+    // "You are here" line (gold solid)
+    const already = chart._alreadyCaught;
+    if (already > 0) {
+      const labels = chart.data.labels;
+
+      // Interpolate x pixel between the two surrounding label indices
+      let idxBefore = 0;
+      for (let i = 0; i < labels.length - 1; i++) {
+        if (labels[i] <= already && labels[i + 1] >= already) { idxBefore = i; break; }
+        if (labels[i] > already) { idxBefore = Math.max(0, i - 1); break; }
+        idxBefore = labels.length - 2;
+      }
+      const idxAfter = Math.min(idxBefore + 1, labels.length - 1);
+      const lBefore  = labels[idxBefore], lAfter = labels[idxAfter];
+      const t        = lAfter === lBefore ? 0 : (already - lBefore) / (lAfter - lBefore);
+      const pxBefore = xScale.getPixelForValue(idxBefore);
+      const pxAfter  = xScale.getPixelForValue(idxAfter);
+      const xPx      = pxBefore + t * (pxAfter - pxBefore);
+
+      // y value from the formula directly so it's always exact
+      const probPct  = cumulativeProb(chart._alreadyRate, already);
+      const yTop     = yScale.getPixelForValue(100);
+      const yBottom  = yScale.getPixelForValue(0);
+      const yDot     = yScale.getPixelForValue(probPct);
+
+      c.save();
+      // full-height line
+      c.beginPath();
+      c.moveTo(xPx, yBottom);
+      c.lineTo(xPx, yTop);
+      c.strokeStyle = "rgba(255,203,5,0.45)";
+      c.lineWidth   = 1.5;
+      c.setLineDash([]);
+      c.stroke();
+
+      // dot on the curve
+      c.beginPath();
+      c.arc(xPx, yDot, 5, 0, Math.PI * 2);
+      c.fillStyle   = "#FFCB05";
+      c.strokeStyle = "#1a1a2e";
+      c.lineWidth   = 2;
+      c.fill();
+      c.stroke();
+
+      // "You are here" label
+      const label    = `You are here (${probPct.toFixed(2)}%)`;
+      const padding  = 6;
+      c.font         = "bold 11px system-ui, sans-serif";
+      const textW    = c.measureText(label).width;
+      const boxW     = textW + padding * 2;
+      const boxH     = 20;
+      const chartRight = xScale.right;
+      const chartTop   = yScale.top;
+      // flip horizontally if near right edge
+      const boxX = (xPx + 10 + boxW > chartRight) ? xPx - 10 - boxW : xPx + 10;
+      // flip below dot if label would go above chart area
+      const aboveY = yDot - boxH - 6;
+      const boxY   = aboveY < chartTop ? yDot + 10 : aboveY;
+
+      c.fillStyle   = "rgba(26,26,46,0.88)";
+      c.strokeStyle = "#FFCB05";
+      c.lineWidth   = 1;
+      c.setLineDash([]);
+      roundRect(c, boxX, boxY, boxW, boxH, 4);
+      c.fill();
+      c.stroke();
+
+      c.fillStyle = "#FFCB05";
+      c.textBaseline = "middle";
+      c.fillText(label, boxX + padding, boxY + boxH / 2);
+      c.restore();
+    }
+  },
+};
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+Chart.register(vertLinePlugin);
+
+// Custom tooltip positioner - snaps to the data point on the curve
+Chart.Tooltip.positioners.curvePoint = function(items) {
+  const item = items.find(i => i.datasetIndex === 0);
+  if (!item) return false;
+  return { x: item.element.x, y: item.element.y };
+};
+
+// ── Chart setup ───────────────────────────────────────────────────────────────
+const ctx   = document.getElementById("prob-chart").getContext("2d");
+const chart = new Chart(ctx, {
+  type: "line",
+  data: { labels: [], datasets: [{
+    label: "Cumulative probability",
+    data: [],
+    borderColor: "#FFCB05",
+    backgroundColor: "rgba(255,203,5,0.07)",
+    borderWidth: 2.5,
+    pointRadius: 0,
+    fill: true,
+    tension: 0.3,
+  }]},
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "nearest", intersect: false, axis: "x" },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        position: "curvePoint",
+        backgroundColor: "#16213e",
+        borderColor: "#0f3460",
+        borderWidth: 1,
+        titleColor: "#FFCB05",
+        bodyColor: "#e0e0e0",
+        filter: item => item.datasetIndex === 0,
+        displayColors: false,
+        callbacks: {
+          title: items => `${items[0].label} catches`,
+          label: items => ` ${parseFloat(items.formattedValue).toFixed(2)}% probability`,
+        },
+      },
+      annotation: {},  // placeholder; we use manual lines below
+    },
+    scales: {
+      x: {
+        ticks: { color: "#8899aa", maxTicksLimit: 8 },
+        grid:  { color: "rgba(255,255,255,0.05)" },
+        title: { display: true, text: "Number of catches", color: "#8899aa" },
+      },
+      y: {
+        min: 0, max: 100,
+        ticks: { color: "#8899aa", callback: v => v + "%" },
+        grid:  { color: "rgba(255,255,255,0.05)" },
+        title: { display: true, text: "Cumulative probability", color: "#8899aa" },
+      },
+    },
+  },
+});
+
+// ── Main update ───────────────────────────────────────────────────────────────
+let debounceTimer;
+function scheduleUpdate() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(update, 80);
+}
+
+function update() {
+  const p   = currentRate();
+  const n95 = catchesNeeded(p, 95);
+  const n   = catchesNeeded(p, state.prob);
+
+  const fmt = v => isFinite(v) ? v.toLocaleString() : "∞";
+
+  // Big number
+  document.getElementById("res-n").textContent = fmt(n);
+  document.getElementById("res-rate").textContent =
+    `Rate: 1 in ${Math.round(1/p).toLocaleString()} (${(p*100).toFixed(4)}% per catch)`;
+
+  // Threshold table
+  const thresholds = [50, 75, 90, 95, 99, 99.9, 100];
+  const tbody = document.getElementById("thresh-body");
+  tbody.innerHTML = "";
+  thresholds.forEach(t => {
+    const tn  = catchesNeeded(p, t);
+    const tr  = document.createElement("tr");
+    if (t === state.prob) tr.className = "highlight";
+    const expStr = isFinite(tn) ? `~${(tn * p).toFixed(1)}` : "∞";
+    tr.innerHTML = `<td>${t}%</td><td>${fmt(tn)}</td><td>${expStr}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  updateAlready();
+  updateFunFacts(p, n);
+  updateChart(p, n95);
+}
+
+// ── Fun facts helpers ──────────────────────────────────────────────────────────
+function formatDuration(minutes) {
+  if (minutes < 60)   return `${Math.round(minutes)} min`;
+  if (minutes < 1440) return `${(minutes / 60).toFixed(1)} hours`;
+  const days = minutes / 1440;
+  if (days < 30)  return `${Math.round(days)} days`;
+  if (days < 365) return `${(days / 30.4).toFixed(1)} months`;
+  return `${(days / 365).toFixed(1)} years`;
+}
+
+function formatDays(days) {
+  if (days < 2)   return `${days} day`;
+  if (days < 30)  return `${days} days`;
+  if (days < 365) return `${(days / 30.4).toFixed(1)} months`;
+  return `${(days / 365).toFixed(1)} years`;
+}
+
+function updateFunFacts(p, n) {
+  const enc  = ENCOUNTERS.find(e => e.id === state.encId);
+  const goal = GOALS[state.goalId];
+  const mean = Math.round(1 / p);
+  const coinFlips = Math.round(Math.log(1 / p) / Math.log(2));
+  const inf  = !isFinite(n);
+  const nStr = inf ? "∞" : n.toLocaleString();
+
+  const facts = [
+    {
+      icon: "⏱️",
+      title: "2 min per catch",
+      text: inf
+        ? `100% is mathematically impossible - you'd need <strong>infinite catches</strong> to guarantee it.`
+        : `At one catch every 2 minutes, reaching <strong>${state.prob}%</strong> would take you <strong>${formatDuration(n * 2)}</strong>.`,
+    },
+    {
+      icon: "📅",
+      title: "One a day",
+      text: inf
+        ? `No finite number of daily raids can <em>guarantee</em> a hundo - probability only asymptotes to 100%.`
+        : `Raiding once a day, you'd reach <strong>${state.prob}%</strong> in <strong>${formatDays(n)}</strong>.`,
+    },
+    {
+      icon: "🎲",
+      title: "Coin flip equivalent",
+      text: `Each catch has the same odds as flipping heads <strong>${coinFlips} times in a row</strong> (1 in ${mean.toLocaleString()}).`,
+    },
+    {
+      icon: "🌍",
+      title: "World scale",
+      text: `If <strong>10,000 trainers</strong> each made one catch, about <strong>${Math.round(10000 * p).toLocaleString() || "< 1"}</strong> would get a ${state.goalId === "purified" ? "purified hundo" : "hundo"}.`,
+    },
+    {
+      icon: "🏆",
+      title: "Expected haul",
+      text: inf
+        ? `In <strong>∞</strong> catches you'd get infinite hundos - but you'll almost certainly get one long before that.`
+        : `In <strong>${nStr}</strong> catches you'd expect <strong>${(n * p).toFixed(1)} ${state.goalId === "purified" ? "purified hundos" : "hundos"}</strong> on average.`,
+    },
+    {
+      icon: "🎰",
+      title: "Average wait",
+      text: `On average it takes <strong>${mean.toLocaleString()} catches</strong> to find your first one - whether you've caught 0 or 10,000 so far.`,
+    },
+  ];
+
+  const grid = document.getElementById("facts-grid");
+  grid.innerHTML = "";
+  facts.forEach(f => {
+    const card = document.createElement("div");
+    card.className = "fact-card";
+    card.innerHTML = `
+      <div class="fact-icon">${f.icon}</div>
+      <div class="fact-title">${f.title}</div>
+      <div class="fact-text">${f.text}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function updateAlready() {
+  const p       = currentRate();
+  const already = parseInt(document.getElementById("already-input").value) || 0;
+  const el      = document.getElementById("already-result");
+
+  chart._alreadyCaught = already;
+  chart._alreadyRate   = p;
+  chart.update("none");
+
+  if (already <= 0) { el.textContent = ""; return; }
+  const pct = cumulativeProb(p, already);
+  el.innerHTML = `You have a <span>${pct.toFixed(2)}%</span> chance of having seen at least one by now.`;
+}
+
+  function updateChart(p, n95) {
+    const already  = parseInt(document.getElementById("already-input").value) || 0;
+    const safeN95  = isFinite(n95) ? n95 : catchesNeeded(p, 99);  // fallback when target is 100%
+    const maxN     = Math.max(Math.ceil(safeN95 * 3), already + Math.ceil(safeN95 * 0.2), 20);
+  const step = Math.max(1, Math.floor(maxN / 200));
+  const labels = [], data = [];
+
+  for (let i = 0; i <= maxN; i += step) {
+    labels.push(i);
+    data.push(parseFloat(cumulativeProb(p, i).toFixed(3)));
+  }
+
+  chart.data.labels   = labels;
+  chart.data.datasets[0].data = data;
+
+  // Draw target probability line via annotation-free approach (use dataset)
+  const targetPct = state.prob;
+  const nTarget   = catchesNeeded(p, targetPct);
+
+  // Remove old annotation datasets
+  chart.data.datasets = chart.data.datasets.slice(0, 1);
+
+  // Horizontal line at target %
+  chart.data.datasets.push({
+    label: `${targetPct}% target`,
+    data: labels.map(() => targetPct),
+    borderColor: "rgba(0,117,190,0.6)",
+    borderWidth: 1.5,
+    borderDash: [6, 4],
+    pointRadius: 0,
+    fill: false,
+    tension: 0,
+  });
+
+  // Vertical line drawn via plugin
+  chart._vertLineX    = labels.reduce((bestIdx, l, i) => Math.abs(l - nTarget) < Math.abs(labels[bestIdx] - nTarget) ? i : bestIdx, 0);
+  chart._vertLineY    = targetPct;
+  chart._alreadyRate  = p;
+  chart._alreadyCaught = parseInt(document.getElementById("already-input").value) || 0;
+
+  chart.update("none");
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+buildEncGrid();
+buildGoalRow();
+resizePctInput();
+update();
+</script>
+</body>
+</html>
